@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+set ROOT_PASS [ exec grep root ./variables | cut -d: -f2 ]
+set ZABBIX_PASS [ exec grep zabbix ./variables | cut -d: -f2 ]
+set REMOTE_IP [ exec grep remote-ip ./variables | cut -d: -f2 ]
+
+spawn mysql -u root -p
+expect "Enter password:"
+send -- "$ROOT_PASS\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "create database zabbix character set utf8mb4 collate utf8mb4_bin;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "create user zabbix@localhost identified by '$ZABBIX_PASS';\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "grant all privileges on zabbix.* to zabbix@localhost;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "set global log_bin_trust_function_creators = 1;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "grant all privileges on *.* to 'root'@'$REMOTE_IP' identified by '$ROOT_PASS' with grant option;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "grant all privileges on zabbix.* to 'zabbix'@'$REMOTE_IP' identified by '$ZABBIX_PASS' with grant option;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "flush privileges;\r"
+
+expect "MariaDB \\\[(none)]>"
+send -- "quit;\r"
